@@ -1,0 +1,38 @@
+{% extends "./base.html" %}
+
+{% block title %}Главная{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
+    <h1 class="text-3xl font-bold mb-6 text-center">Добро пожаловать в PaymentApp</h1>
+    
+    <div class="grid md:grid-cols-2 gap-6 mb-8">
+        <div class="border rounded-lg p-4 text-center">
+            <h2 class="text-xl font-semibold mb-2">Я исполнитель</h2>
+            <form action="/register" method="POST">
+                <input type="hidden" name="role" value="executor">
+                <input type="text" name="username" placeholder="Имя пользователя" class="w-full p-2 border rounded mb-2" required>
+                <input type="email" name="email" placeholder="Email" class="w-full p-2 border rounded mb-2" required>
+                <input type="password" name="password" placeholder="Пароль" class="w-full p-2 border rounded mb-2" required>
+                <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded">Зарегистрироваться</button>
+            </form>
+        </div>
+        
+        <div class="border rounded-lg p-4 text-center">
+            <h2 class="text-xl font-semibold mb-2">Я заказчик</h2>
+            <form action="/register" method="POST">
+                <input type="hidden" name="role" value="customer">
+                <input type="text" name="username" placeholder="Имя пользователя" class="w-full p-2 border rounded mb-2" required>
+                <input type="email" name="email" placeholder="Email" class="w-full p-2 border rounded mb-2" required>
+                <input type="password" name="password" placeholder="Пароль" class="w-full p-2 border rounded mb-2" required>
+                <button type="submit" class="w-full bg-green-500 text-white p-2 rounded">Зарегистрироваться</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="text-center">
+        <p class="mb-2">Уже есть аккаунт?</p>
+        <a href="/login" class="text-blue-500 hover:underline">Войти в систему</a>
+    </div>
+</div>
+{% endblock %}

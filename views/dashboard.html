@@ -1,0 +1,49 @@
+{% extends "./base.html" %}
+
+{% block title %}Дашборд{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <h2 class="text-2xl font-bold mb-4">Дашборд</h2>
+    
+    {% if user_role == "executor" %}
+    <div class="mb-6">
+        <h3 class="text-xl font-semibold mb-3">Создать услугу</h3>
+        <form action="/services" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input type="text" name="title" placeholder="Название услуги" class="p-2 border rounded" required>
+            <input type="number" step="0.01" name="price" placeholder="Цена" class="p-2 border rounded" required>
+            <textarea name="description" placeholder="Описание услуги" class="p-2 border rounded md:col-span-2" rows="3" required></textarea>
+            <button type="submit" class="bg-blue-500 text-white p-2 rounded md:col-span-2">Создать услугу</button>
+        </form>
+    </div>
+    {% endif %}
+    
+    <div>
+        <h3 class="text-xl font-semibold mb-3">Доступные услуги</h3>
+        <div class="grid gap-4">
+            {% for service in Services %}
+            <div class="border rounded-lg p-4">
+                <h4 class="font-bold text-lg">{{ service.Title }}</h4>
+                <p class="text-gray-600 mb-2">{{ service.Description }}</p>
+                <p class="font-semibold mb-2">Цена: {{ service.Price }} руб.</p>
+                
+                {% if user_role == "customer" %}
+                <a href="/payment/{{ service.ID }}" class="bg-green-500 text-white px-4 py-2 rounded">Оплатить</a>
+                {% else %}
+                <button class="bg-blue-500 text-white px-4 py-2 rounded" onclick="copyLink('{{ service.ID }}')">Поделиться ссылкой</button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+function copyLink(serviceId) {
+    const link = window.location.origin + '/payment/' + serviceId;
+    navigator.clipboard.writeText(link).then(() => {
+        alert('Ссылка скопирована: ' + link);
+    });
+}
+</script>
+{% endblock %}
