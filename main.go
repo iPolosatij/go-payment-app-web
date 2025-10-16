@@ -37,7 +37,15 @@ func main() {
 	app.Get("/dashboard", func(c *fiber.Ctx) error {
 		var services []models.Service
 		db.Find(&services)
-		return c.Render("dashboard", fiber.Map{"Services": services})
+
+		userID := c.Cookies("user_id")
+		userRole := c.Cookies("user_role")
+
+		return c.Render("dashboard", fiber.Map{
+			"Services":  services,
+			"user_id":   userID,
+			"user_role": userRole,
+		})
 	})
 
 	app.Post("/register", handler.Register)
