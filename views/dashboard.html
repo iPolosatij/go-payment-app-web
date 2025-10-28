@@ -48,11 +48,16 @@
                 <div class="mb-3">
                     <span class="font-semibold">Статус работы:</span>
                     <span class="ml-2 px-2 py-1 rounded text-sm 
-                        {% if service.WorkStatus == 'completed' %}bg-green-100 text-green-800
+                        {% if service.WorkStatus == 'confirmed' %}bg-green-100 text-green-800
+                        {% elif service.WorkStatus == 'completed' %}bg-blue-100 text-blue-800
                         {% elif service.WorkStatus == 'in_progress' %}bg-yellow-100 text-yellow-800
                         {% elif service.WorkStatus == 'cancelled' %}bg-red-100 text-red-800
                         {% else %}bg-gray-100 text-gray-800{% endif %}">
-                        {{ service.WorkStatus }}
+                        {% if service.WorkStatus == 'confirmed' %}Подтверждена
+                        {% elif service.WorkStatus == 'completed' %}Завершена
+                        {% elif service.WorkStatus == 'in_progress' %}В работе
+                        {% elif service.WorkStatus == 'cancelled' %}Отменена
+                        {% else %}Не начата{% endif %}
                     </span>
                 </div>
                 
@@ -63,6 +68,7 @@
                         <option value="not_started" {% if service.WorkStatus == "not_started" %}selected{% endif %}>Не начата</option>
                         <option value="in_progress" {% if service.WorkStatus == "in_progress" %}selected{% endif %}>В работе</option>
                         <option value="completed" {% if service.WorkStatus == "completed" %}selected{% endif %}>Завершена</option>
+                        <option value="confirmed" {% if service.WorkStatus == "confirmed" %}selected{% endif %}>Подтверждена</option>
                         <option value="cancelled" {% if service.WorkStatus == "cancelled" %}selected{% endif %}>Отменена</option>
                     </select>
                     <button type="submit" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">
@@ -71,16 +77,29 @@
                 </form>
                 {% endif %}
                 
-                {% if user_role == "customer" and service.WorkStatus != "cancelled" %}
-                <a href="/payment/{{ service.ID }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                    Оплатить
-                </a>
-                {% elif user_role == "executor" %}
-                <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" 
-                        onclick="copyLink('{{ service.ID }}')">
-                    Поделиться ссылкой
-                </button>
-                {% endif %}
+                <div class="flex gap-2 flex-wrap">
+                    {% if user_role == "customer" and service.WorkStatus != "cancelled" and service.WorkStatus != "confirmed" %}
+                    <a href="/payment/{{ service.ID }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Оплатить
+                    </a>
+                    {% endif %}
+                    
+                    {% if user_role == "executor" %}
+                    <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" 
+                            onclick="copyLink('{{ service.ID }}')">
+                        Поделиться ссылкой
+                    </button>
+                    
+                    <!-- Кнопка "Получить оплату" для исполнителя -->
+                    {% if service.WorkStatus == "confirmed" %}
+                    <form action="/service/{{ service.ID }}/receive-payment" method="POST" class="inline">
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            Получить оплату
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+                </div>
             </div>
             {% endfor %}
         </div>

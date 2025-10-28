@@ -19,7 +19,7 @@ type Service struct {
 	Executor         User   `gorm:"foreignKey:ExecutorID"`
 	CustomerUsername string // Имя заказчика, для которого создана услуга
 	Status           string `gorm:"default:'active'"`
-	WorkStatus       string `gorm:"default:'not_started'"` // "not_started", "in_progress", "completed", "cancelled"
+	WorkStatus       string `gorm:"default:'not_started'"` // "not_started", "in_progress", "completed", "confirmed", "cancelled"
 }
 
 type Payment struct {

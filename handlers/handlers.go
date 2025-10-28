@@ -135,20 +135,11 @@ func (h *Handler) InitiatePayment(c *fiber.Ctx) error {
 
 func (h *Handler) UpdateWorkStatus(c *fiber.Ctx) error {
 	serviceID := c.Params("id")
-	username := c.Cookies("username")
 	userRole := c.Cookies("user_role")
 
 	var service models.Service
 	if err := h.DB.First(&service, serviceID).Error; err != nil {
 		return c.Status(404).SendString("Service not found")
-	}
-
-	// Проверяем права доступа
-	if userRole == "customer" && service.CustomerUsername != username {
-		return c.Status(403).SendString("Access denied")
-	}
-	if userRole == "executor" && fmt.Sprintf("%d", service.ExecutorID) != c.Cookies("user_id") {
-		return c.Status(403).SendString("Access denied")
 	}
 
 	var input struct {
@@ -158,9 +149,44 @@ func (h *Handler) UpdateWorkStatus(c *fiber.Ctx) error {
 		return c.Status(400).SendString("Invalid input")
 	}
 
+	// Единственное ограничение: только заказчик может подтверждать
+	if input.WorkStatus == "confirmed" && userRole != "customer" {
+		return c.Status(403).SendString("Only customer can confirm completion")
+	}
+
 	// Обновляем статус работы
 	h.DB.Model(&service).Update("work_status", input.WorkStatus)
 
+	return c.Redirect("/dashboard")
+}
+
+// Добавим новый обработчик для получения оплаты
+func (h *Handler) ReceivePayment(c *fiber.Ctx) error {
+	serviceID := c.Params("id")
+	userID := c.Cookies("user_id")
+	userRole := c.Cookies("user_role")
+
+	if userRole != "executor" {
+		return c.Status(403).SendString("Access denied")
+	}
+
+	var service models.Service
+	if err := h.DB.First(&service, serviceID).Error; err != nil {
+		return c.Status(404).SendString("Service not found")
+	}
+
+	// Проверяем, что услуга принадлежит исполнителю
+	if fmt.Sprintf("%d", service.ExecutorID) != userID {
+		return c.Status(403).SendString("This service doesn't belong to you")
+	}
+
+	// Проверяем, что статус "confirmed"
+	if service.WorkStatus != "confirmed" {
+		return c.Status(400).SendString("Service must be confirmed by customer before receiving payment")
+	}
+
+	// TODO: Добавить логику получения оплаты
+	// Пока просто перенаправляем обратно
 	return c.Redirect("/dashboard")
 }
 

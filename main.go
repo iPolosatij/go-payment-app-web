@@ -62,6 +62,8 @@ func main() {
 	app.Post("/services", handler.CreateService)
 	app.Get("/payment/:id", handler.InitiatePayment)
 	app.Post("/service/:id/status", handler.UpdateWorkStatus)
+	app.Post("/service/:id/status", handler.UpdateWorkStatus)
+	app.Post("/service/:id/receive-payment", handler.ReceivePayment)
 
 	log.Fatal(app.Listen(cfg.ServerPort))
 }
