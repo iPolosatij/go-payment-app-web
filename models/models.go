@@ -12,12 +12,14 @@ type User struct {
 
 type Service struct {
 	gorm.Model
-	Title       string
-	Description string
-	Price       float64
-	ExecutorID  uint
-	Executor    User   `gorm:"foreignKey:ExecutorID"`
-	Status      string `gorm:"default:'active'"`
+	Title            string
+	Description      string
+	Price            float64
+	ExecutorID       uint
+	Executor         User   `gorm:"foreignKey:ExecutorID"`
+	CustomerUsername string // Имя заказчика, для которого создана услуга
+	Status           string `gorm:"default:'active'"`
+	WorkStatus       string `gorm:"default:'not_started'"` // "not_started", "in_progress", "completed", "cancelled"
 }
 
 type Payment struct {

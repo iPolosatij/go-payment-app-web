@@ -13,6 +13,7 @@
         <form action="/services" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input type="text" name="title" placeholder="Название услуги" class="p-2 border rounded" required>
             <input type="number" step="0.01" name="price" placeholder="Цена" class="p-2 border rounded" required>
+            <input type="text" name="customer_username" placeholder="Username заказчика" class="p-2 border rounded" required>
             <textarea name="description" placeholder="Описание услуги" class="p-2 border rounded md:col-span-2" rows="3" required></textarea>
             <button type="submit" class="bg-blue-500 text-white p-2 rounded md:col-span-2 hover:bg-blue-600">
                 Создать услугу
@@ -22,10 +23,12 @@
     {% endif %}
     
     <div>
-        <h3 class="text-xl font-semibold mb-3">Доступные услуги</h3>
+        <h3 class="text-xl font-semibold mb-3">
+            {% if user_role == "executor" %}Мои услуги{% else %}Мои заказы{% endif %}
+        </h3>
         
         {% if Services | length == 0 %}
-        <p class="text-gray-500 text-center py-4">Пока нет доступных услуг</p>
+        <p class="text-gray-500 text-center py-4">Пока нет услуг</p>
         {% else %}
         <div class="grid gap-4">
             {% for service in Services %}
@@ -33,12 +36,46 @@
                 <h4 class="font-bold text-lg">{{ service.Title }}</h4>
                 <p class="text-gray-600 mb-2">{{ service.Description }}</p>
                 <p class="font-semibold mb-2">Цена: {{ service.Price }} руб.</p>
+                <p class="text-sm text-gray-500 mb-2">
+                    {% if user_role == "executor" %}
+                    Для заказчика: {{ service.CustomerUsername }}
+                    {% else %}
+                    Исполнитель: {{ service.Executor.Username }}
+                    {% endif %}
+                </p>
                 
-                {% if user_role == "customer" %}
+                <!-- Статус работы -->
+                <div class="mb-3">
+                    <span class="font-semibold">Статус работы:</span>
+                    <span class="ml-2 px-2 py-1 rounded text-sm 
+                        {% if service.WorkStatus == 'completed' %}bg-green-100 text-green-800
+                        {% elif service.WorkStatus == 'in_progress' %}bg-yellow-100 text-yellow-800
+                        {% elif service.WorkStatus == 'cancelled' %}bg-red-100 text-red-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ service.WorkStatus }}
+                    </span>
+                </div>
+                
+                <!-- Форма изменения статуса -->
+                {% if user_role == "customer" or user_role == "executor" %}
+                <form action="/service/{{ service.ID }}/status" method="POST" class="mb-3">
+                    <select name="work_status" class="p-2 border rounded mr-2">
+                        <option value="not_started" {% if service.WorkStatus == "not_started" %}selected{% endif %}>Не начата</option>
+                        <option value="in_progress" {% if service.WorkStatus == "in_progress" %}selected{% endif %}>В работе</option>
+                        <option value="completed" {% if service.WorkStatus == "completed" %}selected{% endif %}>Завершена</option>
+                        <option value="cancelled" {% if service.WorkStatus == "cancelled" %}selected{% endif %}>Отменена</option>
+                    </select>
+                    <button type="submit" class="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600">
+                        Обновить статус
+                    </button>
+                </form>
+                {% endif %}
+                
+                {% if user_role == "customer" and service.WorkStatus != "cancelled" %}
                 <a href="/payment/{{ service.ID }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
                     Оплатить
                 </a>
-                {% else %}
+                {% elif user_role == "executor" %}
                 <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" 
                         onclick="copyLink('{{ service.ID }}')">
                     Поделиться ссылкой

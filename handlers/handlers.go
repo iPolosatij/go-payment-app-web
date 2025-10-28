@@ -53,6 +53,10 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 		Name:  "user_role",
 		Value: user.Role,
 	})
+	c.Cookie(&fiber.Cookie{
+		Name:  "username",
+		Value: user.Username,
+	})
 
 	return c.Redirect("/dashboard")
 }
@@ -65,15 +69,37 @@ func (h *Handler) CreateService(c *fiber.Ctx) error {
 		return c.Status(403).SendString("Access denied")
 	}
 
-	service := new(models.Service)
-	if err := c.BodyParser(service); err != nil {
-		return c.Status(400).SendString("Invalid input")
+	// Используем структуру для парсинга формы
+	var input struct {
+		Title            string  `form:"title"`
+		Description      string  `form:"description"`
+		Price            float64 `form:"price"`
+		CustomerUsername string  `form:"customer_username"`
 	}
 
-	service.ExecutorID = stringToUint(userID)
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).SendString("Invalid input: " + err.Error())
+	}
+
+	// Проверяем, существует ли заказчик с указанным username
+	var customer models.User
+	if err := h.DB.Where("username = ? AND role = ?", input.CustomerUsername, "customer").First(&customer).Error; err != nil {
+		return c.Status(400).SendString("Customer with username '" + input.CustomerUsername + "' not found")
+	}
+
+	// Создаем услугу с данными из формы
+	service := &models.Service{
+		Title:            input.Title,
+		Description:      input.Description,
+		Price:            input.Price,
+		CustomerUsername: input.CustomerUsername,
+		ExecutorID:       stringToUint(userID),
+		WorkStatus:       "not_started",
+	}
+
 	result := h.DB.Create(&service)
 	if result.Error != nil {
-		return c.Status(500).SendString("Error creating service")
+		return c.Status(500).SendString("Error creating service: " + result.Error.Error())
 	}
 
 	return c.Redirect("/dashboard")
@@ -82,10 +108,16 @@ func (h *Handler) CreateService(c *fiber.Ctx) error {
 func (h *Handler) InitiatePayment(c *fiber.Ctx) error {
 	serviceID := c.Params("id")
 	userID := c.Cookies("user_id")
+	username := c.Cookies("username")
 
 	var service models.Service
 	if err := h.DB.First(&service, serviceID).Error; err != nil {
 		return c.Status(404).SendString("Service not found")
+	}
+
+	// Проверяем, что услуга предназначена для текущего пользователя
+	if service.CustomerUsername != username {
+		return c.Status(403).SendString("This service is not for you")
 	}
 
 	payment := models.Payment{
@@ -99,6 +131,37 @@ func (h *Handler) InitiatePayment(c *fiber.Ctx) error {
 	h.DB.Create(&payment)
 
 	return c.Redirect(payment.PaymentURL)
+}
+
+func (h *Handler) UpdateWorkStatus(c *fiber.Ctx) error {
+	serviceID := c.Params("id")
+	username := c.Cookies("username")
+	userRole := c.Cookies("user_role")
+
+	var service models.Service
+	if err := h.DB.First(&service, serviceID).Error; err != nil {
+		return c.Status(404).SendString("Service not found")
+	}
+
+	// Проверяем права доступа
+	if userRole == "customer" && service.CustomerUsername != username {
+		return c.Status(403).SendString("Access denied")
+	}
+	if userRole == "executor" && fmt.Sprintf("%d", service.ExecutorID) != c.Cookies("user_id") {
+		return c.Status(403).SendString("Access denied")
+	}
+
+	var input struct {
+		WorkStatus string `form:"work_status"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).SendString("Invalid input")
+	}
+
+	// Обновляем статус работы
+	h.DB.Model(&service).Update("work_status", input.WorkStatus)
+
+	return c.Redirect("/dashboard")
 }
 
 func generateRobokassaURL(amount float64, serviceID string) string {

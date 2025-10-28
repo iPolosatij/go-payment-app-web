@@ -35,16 +35,25 @@ func main() {
 	})
 
 	app.Get("/dashboard", func(c *fiber.Ctx) error {
-		var services []models.Service
-		db.Find(&services)
-
 		userID := c.Cookies("user_id")
 		userRole := c.Cookies("user_role")
+		username := c.Cookies("username")
+
+		var services []models.Service
+
+		if userRole == "executor" {
+			// Исполнитель видит только свои услуги
+			db.Where("executor_id = ?", userID).Find(&services)
+		} else if userRole == "customer" {
+			// Заказчик видит только услуги, созданные для него
+			db.Where("customer_username = ?", username).Find(&services)
+		}
 
 		return c.Render("dashboard", fiber.Map{
 			"Services":  services,
 			"user_id":   userID,
 			"user_role": userRole,
+			"username":  username,
 		})
 	})
 
@@ -52,6 +61,7 @@ func main() {
 	app.Post("/login", handler.Login)
 	app.Post("/services", handler.CreateService)
 	app.Get("/payment/:id", handler.InitiatePayment)
+	app.Post("/service/:id/status", handler.UpdateWorkStatus)
 
 	log.Fatal(app.Listen(cfg.ServerPort))
 }
