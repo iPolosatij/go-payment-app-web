@@ -95,6 +95,7 @@ func (h *Handler) CreateService(c *fiber.Ctx) error {
 		CustomerUsername: input.CustomerUsername,
 		ExecutorID:       stringToUint(userID),
 		WorkStatus:       "not_started",
+		PaymentReceived:  false,
 	}
 
 	result := h.DB.Create(&service)
@@ -142,6 +143,11 @@ func (h *Handler) UpdateWorkStatus(c *fiber.Ctx) error {
 		return c.Status(404).SendString("Service not found")
 	}
 
+	// Админ не может менять статусы работы, только статус оплаты
+	if userRole == "admin" {
+		return c.Status(403).SendString("Admin can only mark payments as received")
+	}
+
 	var input struct {
 		WorkStatus string `form:"work_status"`
 	}
@@ -187,6 +193,26 @@ func (h *Handler) ReceivePayment(c *fiber.Ctx) error {
 
 	// TODO: Добавить логику получения оплаты
 	// Пока просто перенаправляем обратно
+	return c.Redirect("/dashboard")
+}
+
+// Новый обработчик для администратора - отметить оплату полученной
+func (h *Handler) AdminMarkPaymentReceived(c *fiber.Ctx) error {
+	serviceID := c.Params("id")
+	userRole := c.Cookies("user_role")
+
+	if userRole != "admin" {
+		return c.Status(403).SendString("Access denied")
+	}
+
+	var service models.Service
+	if err := h.DB.First(&service, serviceID).Error; err != nil {
+		return c.Status(404).SendString("Service not found")
+	}
+
+	// Помечаем оплату как полученную
+	h.DB.Model(&service).Update("payment_received", true)
+
 	return c.Redirect("/dashboard")
 }
 

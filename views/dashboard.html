@@ -6,6 +6,33 @@
 <div class="bg-white rounded-lg shadow-md p-6">
     <h2 class="text-2xl font-bold mb-4">Дашборд</h2>
     
+    <!-- Поиск для администратора -->
+    {% if user_role == "admin" %}
+    <div class="mb-6 p-4 border rounded-lg bg-gray-50">
+        <h3 class="text-xl font-semibold mb-3">Поиск услуг</h3>
+        <form method="GET" action="/dashboard" class="flex gap-2">
+            <input type="text" name="search" placeholder="Поиск по ID, названию, описанию или заказчику..." 
+                   value="{{ search_query }}" class="flex-1 p-2 border rounded">
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Найти
+            </button>
+            {% if search_query %}
+            <a href="/dashboard" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                Сбросить
+            </a>
+            {% endif %}
+        </form>
+        {% if search_query %}
+        <p class="mt-2 text-sm text-gray-600">
+            Найдено услуг: {{ Services | length }} по запросу "{{ search_query }}"
+        </p>
+        {% endif %}
+        <p class="mt-1 text-xs text-gray-500">
+            💡 Подсказка: для поиска по ID введите только номер услуги
+        </p>
+    </div>
+    {% endif %}
+    
     <!-- Показывать форму создания услуги ТОЛЬКО для исполнителей -->
     {% if user_role == "executor" %}
     <div class="mb-6 p-4 border rounded-lg bg-gray-50">
@@ -24,45 +51,79 @@
     
     <div>
         <h3 class="text-xl font-semibold mb-3">
-            {% if user_role == "executor" %}Мои услуги{% else %}Мои заказы{% endif %}
+            {% if user_role == "executor" %}Мои услуги
+            {% elif user_role == "customer" %}Мои заказы
+            {% else %}Все услуги (Админ){% endif %}
         </h3>
         
         {% if Services | length == 0 %}
-        <p class="text-gray-500 text-center py-4">Пока нет услуг</p>
+        <p class="text-gray-500 text-center py-4">
+            {% if search_query %}
+            Услуги по запросу "{{ search_query }}" не найдены
+            {% else %}
+            Пока нет услуг
+            {% endif %}
+        </p>
         {% else %}
         <div class="grid gap-4">
             {% for service in Services %}
             <div class="border rounded-lg p-4 hover:shadow-lg transition-shadow">
-                <h4 class="font-bold text-lg">{{ service.Title }}</h4>
+                <div class="flex justify-between items-start mb-2">
+                    <h4 class="font-bold text-lg">{{ service.Title }}</h4>
+                    <div class="flex items-center gap-2">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-mono">
+                            ID: {{ service.ID }}
+                        </span>
+                    </div>
+                </div>
                 <p class="text-gray-600 mb-2">{{ service.Description }}</p>
                 <p class="font-semibold mb-2">Цена: {{ service.Price }} руб.</p>
-                <p class="text-sm text-gray-500 mb-2">
-                    {% if user_role == "executor" %}
-                    Для заказчика: {{ service.CustomerUsername }}
-                    {% else %}
-                    Исполнитель: {{ service.Executor.Username }}
-                    {% endif %}
-                </p>
                 
-                <!-- Статус работы -->
-                <div class="mb-3">
-                    <span class="font-semibold">Статус работы:</span>
-                    <span class="ml-2 px-2 py-1 rounded text-sm 
-                        {% if service.WorkStatus == 'confirmed' %}bg-green-100 text-green-800
-                        {% elif service.WorkStatus == 'completed' %}bg-blue-100 text-blue-800
-                        {% elif service.WorkStatus == 'in_progress' %}bg-yellow-100 text-yellow-800
-                        {% elif service.WorkStatus == 'cancelled' %}bg-red-100 text-red-800
-                        {% else %}bg-gray-100 text-gray-800{% endif %}">
-                        {% if service.WorkStatus == 'confirmed' %}Подтверждена
-                        {% elif service.WorkStatus == 'completed' %}Завершена
-                        {% elif service.WorkStatus == 'in_progress' %}В работе
-                        {% elif service.WorkStatus == 'cancelled' %}Отменена
-                        {% else %}Не начата{% endif %}
-                    </span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-500 mb-2">
+                    {% if user_role == "executor" or user_role == "admin" %}
+                    <div>
+                        <span class="font-semibold">Заказчик:</span> {{ service.CustomerUsername }}
+                    </div>
+                    {% endif %}
+                    {% if user_role == "customer" or user_role == "admin" %}
+                    <div>
+                        <span class="font-semibold">Исполнитель:</span> {{ service.Executor.Username }}
+                    </div>
+                    {% endif %}
                 </div>
                 
-                <!-- Форма изменения статуса -->
-                {% if user_role == "customer" or user_role == "executor" %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                    <!-- Статус работы -->
+                    <div>
+                        <span class="font-semibold">Статус работы:</span>
+                        <span class="ml-2 px-2 py-1 rounded text-sm 
+                            {% if service.WorkStatus == 'confirmed' %}bg-green-100 text-green-800
+                            {% elif service.WorkStatus == 'completed' %}bg-blue-100 text-blue-800
+                            {% elif service.WorkStatus == 'in_progress' %}bg-yellow-100 text-yellow-800
+                            {% elif service.WorkStatus == 'cancelled' %}bg-red-100 text-red-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {% if service.WorkStatus == 'confirmed' %}Подтверждена
+                            {% elif service.WorkStatus == 'completed' %}Завершена
+                            {% elif service.WorkStatus == 'in_progress' %}В работе
+                            {% elif service.WorkStatus == 'cancelled' %}Отменена
+                            {% else %}Не начата{% endif %}
+                        </span>
+                    </div>
+                    
+                    <!-- Статус оплаты -->
+                    <div>
+                        <span class="font-semibold">Статус оплаты:</span>
+                        <span class="ml-2 px-2 py-1 rounded text-sm 
+                            {% if service.PaymentReceived %}bg-green-100 text-green-800
+                            {% else %}bg-red-100 text-red-800{% endif %}">
+                            {% if service.PaymentReceived %}Оплата получена
+                            {% else %}Оплата не получена{% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Форма изменения статуса (не для админа) -->
+                {% if user_role != "admin" and (user_role == "customer" or user_role == "executor") %}
                 <form action="/service/{{ service.ID }}/status" method="POST" class="mb-3">
                     <select name="work_status" class="p-2 border rounded mr-2">
                         <option value="not_started" {% if service.WorkStatus == "not_started" %}selected{% endif %}>Не начата</option>
@@ -77,7 +138,23 @@
                 </form>
                 {% endif %}
                 
-                <div class="flex gap-2 flex-wrap">
+                <!-- Кнопки для администратора -->
+                {% if user_role == "admin" %}
+                <div class="mt-3 pt-3 border-t">
+                    <h5 class="font-semibold mb-2">Действия администратора:</h5>
+                    {% if not service.PaymentReceived %}
+                    <form action="/service/{{ service.ID }}/admin-payment-received" method="POST" class="inline">
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                            Отметить оплату полученной
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="text-green-600 font-semibold">✅ Оплата уже получена</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <div class="flex gap-2 flex-wrap mt-3">
                     {% if user_role == "customer" and service.WorkStatus != "cancelled" and service.WorkStatus != "confirmed" %}
                     <a href="/payment/{{ service.ID }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
                         Оплатить
@@ -91,7 +168,7 @@
                     </button>
                     
                     <!-- Кнопка "Получить оплату" для исполнителя -->
-                    {% if service.WorkStatus == "confirmed" %}
+                    {% if service.WorkStatus == "confirmed" and not service.PaymentReceived %}
                     <form action="/service/{{ service.ID }}/receive-payment" method="POST" class="inline">
                         <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
                             Получить оплату

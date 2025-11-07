@@ -5,6 +5,7 @@ import (
 	"go-payment-app-web/handlers"
 	"go-payment-app-web/models"
 	"log"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/django/v3"
@@ -23,6 +24,9 @@ func main() {
 
 	db.AutoMigrate(&models.User{}, &models.Service{}, &models.Payment{})
 
+	// Создаем администратора при запуске
+	createAdminUser(db)
+
 	cfg := config.Load()
 	handler := handlers.NewHandler(db)
 
@@ -38,22 +42,38 @@ func main() {
 		userID := c.Cookies("user_id")
 		userRole := c.Cookies("user_role")
 		username := c.Cookies("username")
+		searchQuery := c.Query("search")
 
 		var services []models.Service
 
 		if userRole == "executor" {
 			// Исполнитель видит только свои услуги
-			db.Where("executor_id = ?", userID).Find(&services)
+			db.Preload("Executor").Where("executor_id = ?", userID).Find(&services)
 		} else if userRole == "customer" {
 			// Заказчик видит только услуги, созданные для него
-			db.Where("customer_username = ?", username).Find(&services)
+			db.Preload("Executor").Where("customer_username = ?", username).Find(&services)
+		} else if userRole == "admin" {
+			// Админ видит все услуги с возможностью поиска
+			query := db.Preload("Executor")
+			if searchQuery != "" {
+				// Пробуем преобразовать поисковый запрос в число (поиск по ID)
+				if id, err := strconv.Atoi(searchQuery); err == nil {
+					query = query.Where("id = ?", id)
+				} else {
+					// Если не число, ищем по текстовым полям
+					query = query.Where("title LIKE ? OR description LIKE ? OR customer_username LIKE ?",
+						"%"+searchQuery+"%", "%"+searchQuery+"%", "%"+searchQuery+"%")
+				}
+			}
+			query.Find(&services)
 		}
 
 		return c.Render("dashboard", fiber.Map{
-			"Services":  services,
-			"user_id":   userID,
-			"user_role": userRole,
-			"username":  username,
+			"Services":     services,
+			"user_id":      userID,
+			"user_role":    userRole,
+			"username":     username,
+			"search_query": searchQuery,
 		})
 	})
 
@@ -62,8 +82,27 @@ func main() {
 	app.Post("/services", handler.CreateService)
 	app.Get("/payment/:id", handler.InitiatePayment)
 	app.Post("/service/:id/status", handler.UpdateWorkStatus)
-	app.Post("/service/:id/status", handler.UpdateWorkStatus)
 	app.Post("/service/:id/receive-payment", handler.ReceivePayment)
+	app.Post("/service/:id/admin-payment-received", handler.AdminMarkPaymentReceived)
 
 	log.Fatal(app.Listen(cfg.ServerPort))
+}
+
+func createAdminUser(db *gorm.DB) {
+	var adminUser models.User
+	result := db.Where("username = ?", "admin").First(&adminUser)
+
+	if result.Error != nil {
+		// Администратора нет, создаем его
+		admin := models.User{
+			Username: "admin",
+			Email:    "admin@paymentapp.com",
+			Password: "wahadmin",
+			Role:     "admin",
+		}
+		db.Create(&admin)
+		log.Println("Admin user created successfully")
+	} else {
+		log.Println("Admin user already exists")
+	}
 }
