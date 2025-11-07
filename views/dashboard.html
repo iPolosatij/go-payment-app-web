@@ -77,7 +77,7 @@
                     </div>
                 </div>
                 <p class="text-gray-600 mb-2">{{ service.Description }}</p>
-                <p class="font-semibold mb-2">Цена: {{ service.Price }} руб.</p>
+                <p class="font-semibold mb-2">Цена: {{ formatPrice(service.Price) }}</p>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-500 mb-2">
                     {% if user_role == "executor" or user_role == "admin" %}
@@ -157,7 +157,7 @@
                 <div class="flex gap-2 flex-wrap mt-3">
                     {% if user_role == "customer" and service.WorkStatus != "cancelled" and service.WorkStatus != "confirmed" %}
                     <a href="/payment/{{ service.ID }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                        Оплатить
+                        Оплатить {{ formatPrice(service.Price) }}
                     </a>
                     {% endif %}
                     
@@ -171,7 +171,7 @@
                     {% if service.WorkStatus == "confirmed" and not service.PaymentReceived %}
                     <form action="/service/{{ service.ID }}/receive-payment" method="POST" class="inline">
                         <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                            Получить оплату
+                            Получить оплату {{ formatPrice(service.Price) }}
                         </button>
                     </form>
                     {% endif %}

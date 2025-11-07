@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"go-payment-app-web/models"
+	"math"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -81,6 +82,9 @@ func (h *Handler) CreateService(c *fiber.Ctx) error {
 		return c.Status(400).SendString("Invalid input: " + err.Error())
 	}
 
+	// Округляем цену до сотых (копеек)
+	roundedPrice := math.Round(input.Price*100) / 100
+
 	// Проверяем, существует ли заказчик с указанным username
 	var customer models.User
 	if err := h.DB.Where("username = ? AND role = ?", input.CustomerUsername, "customer").First(&customer).Error; err != nil {
@@ -91,7 +95,7 @@ func (h *Handler) CreateService(c *fiber.Ctx) error {
 	service := &models.Service{
 		Title:            input.Title,
 		Description:      input.Description,
-		Price:            input.Price,
+		Price:            roundedPrice,
 		CustomerUsername: input.CustomerUsername,
 		ExecutorID:       stringToUint(userID),
 		WorkStatus:       "not_started",
@@ -217,7 +221,9 @@ func (h *Handler) AdminMarkPaymentReceived(c *fiber.Ctx) error {
 }
 
 func generateRobokassaURL(amount float64, serviceID string) string {
-	return fmt.Sprintf("https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=your_login&OutSum=%.2f&InvId=%s", amount, serviceID)
+	// Округляем сумму до двух знаков для платежной системы
+	roundedAmount := math.Round(amount*100) / 100
+	return fmt.Sprintf("https://auth.robokassa.ru/Merchant/Index.aspx?MerchantLogin=your_login&OutSum=%.2f&InvId=%s", roundedAmount, serviceID)
 }
 
 func stringToUint(s string) uint {

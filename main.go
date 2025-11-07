@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go-payment-app-web/config"
 	"go-payment-app-web/handlers"
 	"go-payment-app-web/models"
@@ -15,6 +16,12 @@ import (
 
 func main() {
 	engine := django.New("./views", ".html")
+
+	// Добавляем кастомные функции для шаблонов
+	engine.AddFunc("formatPrice", func(price float64) string {
+		return fmt.Sprintf("%.2f ₽", price)
+	})
+
 	app := fiber.New(fiber.Config{Views: engine})
 
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
